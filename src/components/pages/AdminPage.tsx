@@ -175,7 +175,7 @@ export function AdminPage() {
           status === "Sukses"
             ? `Dana ${rupiah(w.amount)} sudah dikirim ke ${w.walletType} ${w.walletNumber}.`
             : `Penarikan ${rupiah(w.amount)} ditolak, saldo dikembalikan.`,
-        amount: w.amount,
+        amount: w.amount || 0,
       });
       toast.success("Status penarikan diperbarui.");
     } catch (err) {
@@ -466,7 +466,7 @@ function SubmissionDetail({ sub, onBack }: { sub: Submission; onBack: () => void
 
       const subRef = doc(db, "submissions", sub.id);
       const fresh = await getDoc(subRef);
-      const alreadyCredited = fresh.exists() ? fresh.data().isCredited === true : false;
+      const alreadyCredited = fresh.exists() ? fresh.data()['isCredited'] === true : false;
 
       await updateDoc(subRef, {
         emailResults: rows,
@@ -499,7 +499,7 @@ function SubmissionDetail({ sub, onBack }: { sub: Submission; onBack: () => void
           if (referrerSnap.exists() && bonus > 0) {
             await updateDoc(userRef, { balance: fsIncrement(-bonus), referralBonusGiven: true });
             await updateDoc(referrerRef, { balance: fsIncrement(bonus) });
-            const refs: ReferralEntry[] = referrerSnap.data().referrals || [];
+            const refs: ReferralEntry[] = referrerSnap.data()['referrals'] || [];
             const newRefs = refs.map((r) =>
               r.uid === sub.uid
                 ? { ...r, bonusEarned: (r.bonusEarned || 0) + bonus, bonusGiven: true, bonusDate: Date.now() }
@@ -523,8 +523,8 @@ function SubmissionDetail({ sub, onBack }: { sub: Submission; onBack: () => void
         let accSubmitted = 0;
         subsSnap.forEach((s) => {
           const d = s.data();
-          accGood += d.stats?.good || 0;
-          accSubmitted += d.count || (d.emailResults ? d.emailResults.length : 0);
+          accGood += d['stats']?.good || 0;
+          accSubmitted += d['count'] || (d['emailResults'] ? d['emailResults'].length : 0);
         });
         const afterSnap = await getDoc(userRef);
         const referredBy = afterSnap.exists() ? (afterSnap.data() as UserDoc).referredBy : null;
@@ -532,7 +532,7 @@ function SubmissionDetail({ sub, onBack }: { sub: Submission; onBack: () => void
           const referrerRef = doc(db, "users", referredBy);
           const referrerSnap = await getDoc(referrerRef);
           if (referrerSnap.exists()) {
-            const refs: ReferralEntry[] = referrerSnap.data().referrals || [];
+            const refs: ReferralEntry[] = referrerSnap.data()['referrals'] || [];
             const newRefs = refs.map((r) =>
               r.uid === sub.uid ? { ...r, totalGood: accGood, totalSubmitted: accSubmitted } : r,
             );
