@@ -10,16 +10,31 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  Clock3,
+  MessageCircle,
+  Gift,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { rupiah, formatDate } from "@/lib/format";
 import { WithdrawModal } from "@/components/WithdrawModal";
 import { LoginCard } from "@/components/LoginCard";
+import { SubmissionResultModal } from "@/components/SubmissionResultModal";
+import type { Submission } from "@/hooks/useAuth";
 
 export function HomePage() {
   const { user, userDoc, balance, submissions, withdrawals } = useAuth();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [detail, setDetail] = useState<Submission | null>(null);
+  const [promo, setPromo] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    if (sessionStorage.getItem("promo_ref_seen")) return;
+    const t = setTimeout(() => setPromo(true), 1200);
+    return () => clearTimeout(t);
+  }, [user]);
 
   useEffect(() => {
     setMounted(true);
@@ -35,6 +50,26 @@ export function HomePage() {
 
   return (
     <div className={`space-y-6 transition-all duration-700 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="p-4 rounded-2xl bg-warning-soft border border-warning/30 flex items-center gap-3">
+          <Clock3 className="w-5 h-5 text-warning shrink-0" />
+          <p className="text-[11px] text-foreground font-bold">
+            Jam kerja penarikan & setoran: <span className="text-warning">08:00 - 22:00 WIB</span> setiap hari.
+          </p>
+        </div>
+        <a
+          href="https://whatsapp.com/channel/"
+          target="_blank"
+          rel="noreferrer"
+          className="p-4 rounded-2xl bg-success-soft border border-success/30 flex items-center gap-3 hover:bg-success/20 transition"
+        >
+          <MessageCircle className="w-5 h-5 text-success shrink-0" />
+          <p className="text-[11px] text-foreground font-bold">
+            Gabung <span className="text-success">Komunitas Resmi WhatsApp</span> untuk info & update terbaru.
+          </p>
+        </a>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 panel-card p-6 sm:p-8 rounded-3xl border-l-4 border-l-brand relative overflow-hidden">
           <div className="absolute -right-20 -top-20 w-64 h-64 bg-brand/20 rounded-full blur-3xl" />
@@ -91,7 +126,11 @@ export function HomePage() {
           ) : (
             <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-1">
               {submissions.slice(0, 10).map((s) => (
-                <div key={s.id} className="p-3.5 rounded-2xl bg-surface/60 border border-border flex items-center justify-between">
+                <button
+                  key={s.id}
+                  onClick={() => setDetail(s)}
+                  className="w-full text-left p-3.5 rounded-2xl bg-surface/60 border border-border flex items-center justify-between hover:bg-surface-2/70 transition"
+                >
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-xl bg-surface-2 text-brand">
                       <Send className="w-4 h-4" />
@@ -105,7 +144,7 @@ export function HomePage() {
                     <p className="text-xs font-bold text-success">{rupiah(s.creditedRp || s.totalRp || 0)}</p>
                     <span className={`text-[10px] font-bold uppercase ${statusText(s.status)}`}>{s.status || "Proses"}</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -142,6 +181,44 @@ export function HomePage() {
       </div>
 
       <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} />
+      {detail && <SubmissionResultModal sub={detail} onClose={() => setDetail(null)} />}
+
+      {promo && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="panel-card rounded-3xl p-6 w-full max-w-sm text-center space-y-4 relative overflow-hidden">
+            <div className="absolute -right-16 -top-16 w-48 h-48 bg-violet/30 rounded-full blur-3xl" />
+            <button
+              onClick={() => {
+                sessionStorage.setItem("promo_ref_seen", "1");
+                setPromo(false);
+              }}
+              className="absolute right-4 top-4 p-1.5 rounded-lg bg-surface-2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="relative space-y-3">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-violet-soft border border-violet/30 flex items-center justify-center">
+                <Gift className="w-7 h-7 text-violet" />
+              </div>
+              <h3 className="text-base font-black text-gradient-brand">Bonus Referral 50%</h3>
+              <p className="text-xs text-muted-foreground">
+                Ajak teman lewat link referral kamu. Saat teman menerima pembayaran pertama, kamu dapat bonus 50%
+                dari nilai pembayaran itu.
+              </p>
+              <Link
+                to="/referral"
+                onClick={() => {
+                  sessionStorage.setItem("promo_ref_seen", "1");
+                  setPromo(false);
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-brand via-violet to-pink text-primary-foreground glow-brand"
+              >
+                <Users className="w-4 h-4" /> Ambil Link Referral
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -162,8 +239,12 @@ function StatCard({ icon: Icon, value, label, color, bg }: { icon: typeof Clock;
 
 function statusText(status?: string) {
   switch (status) {
-    case "Berhasil": return "text-success";
-    case "Ditolak": return "text-destructive";
+    case "Berhasil":
+    case "Sukses":
+    case "Good": return "text-success";
+    case "Ditolak":
+    case "Gagal":
+    case "Disabled": return "text-destructive";
     default: return "text-warning";
   }
 }
